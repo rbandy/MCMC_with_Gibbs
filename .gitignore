@@ -1,6 +1,6 @@
 graphs/*
-inputs/*.txt
 outputs/*
+postprocess/*
 src/__pycache__/
 # Byte-compiled / optimized / DLL files
 __pycache__/

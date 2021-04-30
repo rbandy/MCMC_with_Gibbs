@@ -14,7 +14,7 @@ class glv:
         self.reduced_size = reduced_size
         self.t_span = t_span
         self.times = times
-        self.obs_error = obs_error
+        self.obs_error = np.sqrt(obs_error)
         self.obs = self.get_detailed_obs()
 
     def get_concentrations(self):
@@ -41,32 +41,29 @@ class glv:
         return np.array(integrate.solve_ivp(lv_derivatives,
                                             self.t_span, reduced_initial, method='RK45',
                                             t_eval=self.times, atol=1e-4, rtol=1e-8,
-                                            args=(reduced_r, reduced_A)).y).T
+                                            args=(reduced_r, reduced_A)).y).T.flatten()
 
     def get_enriched_conc(self, thetas):
         # print("HERE!")
         # print(thetas)
-        # reduced_r = self.r[0:self.reduced_size]
+        reduced_r = self.r[0:self.reduced_size]
         # # print(reduced_r)
-        tempA = np.array(self.A)
-        tempA[0][1] = thetas[0]
-        # reduced_A = A[0:self.reduced_size, 0:self.reduced_size]
+        reduced_A = self.A[0:self.reduced_size, 0:self.reduced_size]
         # # print(reduced_A)
-        # reduced_initial = self.initial_conc[:self.reduced_size]
-        # # return np.array(integrate.solve_ivp(enriched_lv_derivatives,
-        # #                                     self.t_span, reduced_initial, method='RK45',
-        # #                                     t_eval=self.times, atol=1e-4, rtol=1e-8,
-        # #                                     args=(reduced_r, reduced_A, thetas)).y).T
-        # return integrate.odeint(enriched_lv_derivatives, y0=reduced_initial, t=self.times, args=(reduced_r, reduced_A, thetas))
+        reduced_initial = self.initial_conc[:self.reduced_size]
+        return np.array(integrate.solve_ivp(enriched_lv_derivatives,
+                                            self.t_span, reduced_initial, method='RK45',
+                                            t_eval=self.times, atol=1e-4, rtol=1e-8,
+                                            args=(reduced_r, reduced_A, thetas)).y).T
 
     #     #calibrate theta: dx_1/dt = 5x_1 -3x_1^2 - theta*x_1*x_2
     #     A = np.array(self.A)
     #     A[0,1] = thetas[0]
     #     return integrate.odeint(enriched_lv_derivatives, y0=self.initial_conc, t=self.times, args=(self.r, A, thetas))[:,0:self.reduced_size]
-        return np.array(integrate.solve_ivp(lv_derivatives,
-                                                self.t_span, self.initial_conc, method='RK45',
-                                                t_eval=self.times, atol=1e-4, rtol=1e-8,
-                                                args=(self.r, tempA)).y).T[:,0:self.reduced_size]
+        # return np.array(integrate.solve_ivp(lv_derivatives,
+        #                                         self.t_span, self.initial_conc, method='RK45',
+        #                                         t_eval=self.times, atol=1e-4, rtol=1e-8,
+        #                                         args=(self.r, tempA)).y).T[:,0:self.reduced_size]
 
 def lv_derivatives(t, conc, r, A):
     """
@@ -80,7 +77,7 @@ def lv_derivatives(t, conc, r, A):
         derivs[i] = (r[i] + interactions)*conc[i]  
     return derivs
 
-def enriched_lv_derivatives(conc, t, r, A, thetas, inad_type=0):
+def enriched_lv_derivatives(t, conc, r, A, thetas, inad_type=6):
     """
     dx_i/dt = r_i*x_i + sum(aij*x_j)*x_i
     """
@@ -90,7 +87,9 @@ def enriched_lv_derivatives(conc, t, r, A, thetas, inad_type=0):
         interactions = sum([A[i][j]*conc[j] for j in range(s)])
         temp = (r[i] + interactions)*conc[i]
         if inad_type == 1:
-            derivs[i] = temp - thetas[i]*conc[i] - thetas[i+s]*abs(temp)
+            derivs[i] = temp + thetas[i]*conc[i] + thetas[i+s]*abs(temp)
+        elif inad_type == 6:
+            derivs[i] = temp + thetas[i]*conc[i]
         else:
             derivs[i] = temp
     return derivs

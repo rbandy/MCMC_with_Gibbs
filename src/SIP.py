@@ -47,10 +47,16 @@ class MCMC_with_Gibbs:
         # self.num_hyperparameters = len(initial_phis)
         self.phis = np.zeros((MC_steps, len(initial_phis)))
         self.phis[0] = initial_phis
-        self.obs = glv_obj.get_concentrations()[:,0:glv_obj.reduced_size].flatten()
-        # self.obs = glv_obj.get_detailed_obs()
+        # self.obs = glv_obj.get_concentrations()[:,0:glv_obj.reduced_size].flatten()
+        self.obs = glv_obj.get_detailed_obs()
         self.obs_error = obs_error
         self.glv_obj = glv_obj
+        self.lowerbound = np.diag(self.glv_obj.A[0:self.glv_obj.reduced_size, 0:self.glv_obj.reduced_size])
+        # competitive/cooperative
+        self.upperbound = -2*self.lowerbound
+
+        # competitive
+        # self.upperbound = -1*self.lowerbound
 
     def loglikelihood(self, theta):
         """
@@ -72,11 +78,13 @@ class MCMC_with_Gibbs:
         p(mu_i) ~ U(-a_ii, a_ii)
         p(Sigma_ii) ~ logN(0, 1)
         """
-        uni = np.sum(stats.uniform.logpdf(phi[0:self.num_parameters], loc=-3.0, scale=6.0))
+        # print(self.lowerbound, self.upperbound)
+        uni = np.sum(stats.uniform.logpdf(phi[0:self.num_parameters], loc=self.lowerbound, scale=self.upperbound))
         if uni <= np.NINF:
             # print("abs mean too big")
             return uni
-        log_norm = np.sum(stats.lognorm.logpdf(phi[self.num_parameters:], [1.0]*self.num_parameters))
+        # log_norm = np.sum(stats.lognorm.logpdf(phi[self.num_parameters:], [0.5]*self.num_parameters))
+        log_norm = np.sum(stats.expon.logpdf(phi[self.num_parameters:], scale = 0.1))
         if log_norm <= np.NINF:
             # print("not PSD", log_norm)
             return log_norm

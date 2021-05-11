@@ -125,7 +125,7 @@ def graph_hyper(thetas, graph_endings, burnin, lag, n_s, var_name):
         step = np.arange(len(ki))
         # sns.kdeplot(ki, ax=axs[c])
         sns.histplot(data=ki, ax=axs[c], kde=True, stat="probability")
-        axs[c].set_xlabel("$\\sigma^2_{%s%s}$"%(0, c+1))
+        axs[c].set_xlabel("${%s}_{%s%s}$"%(var_name, 0, c+1))
         # axs[c].set_ylabel("Kernel Density Estimation")
     fig.suptitle("Marginal Distributions of $\\boldsymbol{{%s}_0}$"%(var_name))  
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -165,11 +165,13 @@ if __name__ == "__main__":
     obs_error = float(info[5])
     inad_type = int(info[6])
 
-    chain_file = "outputs/sip_raw_chain2.dat"
-    hyper_file = "outputs/sip_hyper_raw_chain2.dat"
+    chain_file = "outputs/sip_raw_chain_gibbs1.dat"
+    hyper_file = "outputs/sip_hyper_raw_chain_gibbs1.dat"
     d = n_s
-    burnin = 10000
-    lag = 20
-    stub = "case2_" '%s' '-s' '%s' '-phi' '%s' %(n_S,n_s,n_phis_cal+n_phis_val)
+    # burnin = 10000
+    # lag = 20
+    burnin = 0
+    lag = 1
+    stub = "gibbs_case1_" '%s' '-s' '%s' '-phi' '%s' %(n_S,n_s,n_phis_cal+n_phis_val)
     graph_endings = stub + ".png"
     graph_sip(chain_file, d, graph_endings, burnin, lag, n_s, hyper_file)

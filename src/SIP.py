@@ -53,10 +53,11 @@ class MCMC_with_Gibbs:
         self.glv_obj = glv_obj
         self.lowerbound = np.diag(self.glv_obj.A[0:self.glv_obj.reduced_size, 0:self.glv_obj.reduced_size])
         # competitive/cooperative
-        self.upperbound = -2*self.lowerbound
-
+        # self.upperbound = -2*self.lowerbound
         # competitive
-        # self.upperbound = -1*self.lowerbound
+        self.scale = -1*self.lowerbound
+        self.upperbound = 0.0
+        # self.prior_reject = 0
 
     def loglikelihood(self, theta):
         """
@@ -79,14 +80,14 @@ class MCMC_with_Gibbs:
         p(Sigma_ii) ~ logN(0, 1)
         """
         # print(self.lowerbound, self.upperbound)
-        uni = np.sum(stats.uniform.logpdf(phi[0:self.num_parameters], loc=self.lowerbound, scale=self.upperbound))
+        uni = np.sum(stats.uniform.logpdf(phi[0:self.num_parameters], loc=self.lowerbound, scale=self.scale))
         if uni <= np.NINF:
-            # print("abs mean too big")
+            print("abs mean too big")
             return uni
         # log_norm = np.sum(stats.lognorm.logpdf(phi[self.num_parameters:], [0.5]*self.num_parameters))
         log_norm = np.sum(stats.expon.logpdf(phi[self.num_parameters:], scale = 0.1))
         if log_norm <= np.NINF:
-            # print("not PSD", log_norm)
+            print("not PSD", log_norm)
             return log_norm
         norm = stats.multivariate_normal.logpdf(theta, mean=phi[0:self.num_parameters], cov=np.diag(phi[self.num_parameters:]))
         # print("mu_0", phi[0:self.num_parameters])
@@ -100,22 +101,27 @@ class MCMC_with_Gibbs:
         # return self.thetas[step -1], self.phis[step -1]
         """
         Generate theta_prime, phi_prime given theta and phi and gaussian dist
-        theta_prime = mu + cov^(1/2)*N(0,I)
-        phi_prime = mu + cov^(1/2)*N(0,I)
+        q(phi_prime | phi) = p(phi)
+        q(theta_prime | theta, phi) = theta + cov^(1/2)*N(theta-mu_0,sigma_0)
         """
-        mu = self.thetas[step - 1]
-        default_mu = np.zeros(len(mu))
-        default_cov =  np.identity(len(mu))
-        norm_dist = np.random.multivariate_normal(default_mu, default_cov)
-        half_cov = fractional_matrix_power(self.cov, 0.5)
-        new_theta = mu + np.matmul(half_cov, norm_dist)
+        # update hyperparams
+        # q(mu_prime | mu) = p(mu)
+        # q(sigma_prime | sigma) = p(sigma)
+        mu = np.random.uniform(low=self.lowerbound, high=self.upperbound)
+        variance = np.random.exponential(scale=0.1, size=self.num_parameters)
+        new_phi = np.append(mu, variance)
+        # print("new phi", new_phi)
 
-        mu = self.phis[step - 1]
-        default_mu = np.zeros(len(mu))
-        default_cov =  np.identity(len(mu))
-        norm_dist = np.random.multivariate_normal(default_mu, default_cov)
-        half_cov = fractional_matrix_power(self.hyper_cov, 0.5)
-        new_phi = mu + np.matmul(half_cov, norm_dist)
+        # update model params
+        # q(delta_prime | phi_prime, delta)
+        # need to incorporate likelihood distribution too
+        # old_theta = self.thetas[step-1]
+        # y_theta = self.glv_obj.get_enriched_conc(old_theta).flatten()
+        # return stats.multivariate_normal.logpdf(self.obs, mean=y_theta, cov=self.obs_error)
+        norm_dist = np.random.multivariate_normal(mu, np.diag(variance))
+        new_theta = norm_dist
+        # print("new theta", new_theta)
+
         return new_theta, new_phi
 
     def logtarget(self, theta, phi):
@@ -125,10 +131,16 @@ class MCMC_with_Gibbs:
         prior = self.logprior(theta, phi)
         # print("prior", prior)
         if prior <= np.NINF:
+            # self.prior_reject += 1
             return prior
         like = self.loglikelihood(theta)
         # print("like", like)
         return prior + like
+
+    # def logproposal(self, theta, phi):
+    #     """
+    #     log-prob q()
+    #     """
 
     def _MH_acceptance(self, curr_theta, curr_phi, step):
         """
@@ -141,6 +153,7 @@ class MCMC_with_Gibbs:
         if new_post <= np.NINF:
             return False
         temp = new_post - self.logtarget(old_theta, old_phi)
+        # print("before exp", temp)
         posterior_div = np.exp(temp)
         # print("posterior div", posterior_div)
         alpha = min(1, posterior_div)
@@ -164,6 +177,7 @@ class MCMC_with_Gibbs:
             curr_theta, curr_phi = self.gibbs_proposal(i)
             # print(curr_theta, curr_phi)
             accept = self._MH_acceptance(curr_theta, curr_phi, i)
+            # accept=True
             # print(i, accept)
             if accept:
                 self.thetas[i] = curr_theta
@@ -173,5 +187,6 @@ class MCMC_with_Gibbs:
                 self.thetas[i] = self.thetas[i-1]
                 self.phis[i] = self.phis[i-1]
         print("accepted steps:", accept_count)
+        # print("rejects due to prior:", self.prior_reject)
         # print("final adapted covariance", newCov)
         return accept_count/(self.MC_steps)

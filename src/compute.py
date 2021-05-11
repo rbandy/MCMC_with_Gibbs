@@ -18,12 +18,12 @@ if __name__ == "__main__":
     # get calibration/validation A and r
     # interaction matrix
     # A = [[-3.0, -1.0], [-1.0, -2.0]]
-    # A = np.loadtxt("inputs/matrix.txt")
-    A = np.loadtxt("inputs/matrix2.txt")
+    A = np.loadtxt("inputs/matrix.txt")
+    # A = np.loadtxt("inputs/matrix2.txt")
     # # growth rates
     # r = [5.0, 3.0]
-    # r = np.loadtxt("inputs/growthrates.txt")
-    r = np.loadtxt("inputs/growthrates2.txt")
+    r = np.loadtxt("inputs/growthrates.txt")
+    # r = np.loadtxt("inputs/growthrates2.txt")
 
     # species concentrations at t=0
     # initial_conc = [0.25, 0.5]
@@ -40,20 +40,23 @@ if __name__ == "__main__":
     #detailed vals
     yobs = glv_obj.get_detailed_obs()
     # print(yobs)
-    np.savetxt("inputs/datafile2.txt", yobs)
+    # np.savetxt("inputs/datafile2.txt", yobs)
+    np.savetxt("inputs/datafile.txt", yobs)
 
     # reduced vals
     red_y = glv_obj.get_reduced_obs()
-    np.savetxt("inputs/datafile-reduced2.txt", red_y)
+    # np.savetxt("inputs/datafile-reduced2.txt", red_y)
+    np.savetxt("inputs/datafile-reduced.txt", red_y)
 
     # SIP: calibration
     # number of MCMC steps
-    steps = 50000
-    initial_thetas = [-1.0]*reduced_size
-    initial_phis = np.array([[-1.0]*reduced_size, [0.1]*reduced_size]).flatten()
+    steps = 100
+    initial_thetas = [-10.0]*reduced_size
+    initial_phis = np.array([[-10.0]*reduced_size, [0.1]*reduced_size]).flatten()
 
     proposal_sigma = 0.001
     cov = np.identity(len(initial_thetas))*(proposal_sigma)
+    proposal_sigma = 0.001
     hyper_cov = np.identity(len(initial_phis))*proposal_sigma
     obs_error= obs_error*np.identity(len(yobs))
 
@@ -61,8 +64,10 @@ if __name__ == "__main__":
     accept_ratio = sip.MCMC()
     # print(sip.thetas)
     print(accept_ratio)
-    np.savetxt("outputs/sip_raw_chain2.dat", sip.thetas)
-    np.savetxt("outputs/sip_hyper_raw_chain2.dat", sip.phis)
+    # np.savetxt("outputs/sip_raw_chain2.dat", sip.thetas)
+    # np.savetxt("outputs/sip_hyper_raw_chain2.dat", sip.phis)
+    np.savetxt("outputs/sip_raw_chain_gibbs1.dat", sip.thetas)
+    np.savetxt("outputs/sip_hyper_raw_chain_gibbs1.dat", sip.phis)
 
     # SFP
     # sampled_thetas = np.loadtxt("outputs/sip_raw_chain.dat")
@@ -78,4 +83,5 @@ if __name__ == "__main__":
         model_output[i] = conc
 
     # print(conc)
-    np.savetxt("outputs/sfp_qoi_seq2.dat", model_output)
+    # np.savetxt("outputs/sfp_qoi_seq2.dat", model_output)
+    np.savetxt("outputs/sfp_qoi_seq_gibbs1.dat", model_output)
